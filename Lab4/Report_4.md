@@ -2,7 +2,7 @@
 
 Поднимаем контенеры с помощью docker compose up. Видно, что все сервисы работают.
 
-![image](images/com up.png)
+![image](images/comup.png)
 
 Для наглядной работы с backend-сервисами, будем использовать postman.
 Заходим по адресу http://localhost:8000/docs#/ и копируем содержимое /openapi.json в postman.
