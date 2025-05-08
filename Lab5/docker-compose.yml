@@ -1,0 +1,87 @@
+services:
+  db:
+    image: postgres:14
+    container_name: product_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - product_network
+
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+    ports:
+      - "${ELASTICSEARCH_PORT}:${ELASTICSEARCH_PORT}"
+    networks:
+      - product_network
+
+  pps:
+    build: ./pps
+    container_name: pps_service
+    ports:
+      - "${PPS_PORT}:${IN_PORT}"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
+      - SEARCH_SERVICE_HOST=${SEARCH_SERVICE_HOST}
+      - SEARCH_SERVICE_PORT=${SEARCH_SERVICE_PORT}
+    depends_on:
+      - db
+      - search_service
+    networks:
+      - product_network
+
+  admin_panel:
+    build: ./admin_panel
+    container_name: admin_panel_service
+    ports:
+      - "${ADMIN_PANEL_PORT}:${IN_PORT}"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
+    depends_on:
+      - db
+    networks:
+      - product_network
+
+  search_service:
+    build: ./search_service
+    container_name: search_service
+    ports:
+      - "${SEARCH_SERVICE_PORT_OUT}:${IN_PORT}"
+    environment:
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST}
+      - ELASTICSEARCH_PORT=${ELASTICSEARCH_PORT}
+      - ELASTICSEARCH_INDEX=${ELASTICSEARCH_INDEX}
+    depends_on:
+      - elasticsearch
+    networks:
+      - product_network
+
+  etl:
+    build: ./etl
+    container_name: etl_service
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST}
+      - ELASTICSEARCH_PORT=${ELASTICSEARCH_PORT}
+      - ELASTICSEARCH_INDEX=${ELASTICSEARCH_INDEX}
+    depends_on:
+      - db
+      - elasticsearch
+    networks:
+      - product_network
+
+volumes:
+  postgres_data:
+
+networks:
+  product_network:
